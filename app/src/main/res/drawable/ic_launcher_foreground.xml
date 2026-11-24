@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Outer Energy Shield -->
+    <path
+        android:fillColor="#1822D3EE"
+        android:strokeColor="#22D3EE"
+        android:strokeWidth="3.2"
+        android:pathData="M54,20 L80,30 L80,54 C80,71 68,83 54,89 C40,83 28,71 28,54 L28,30 Z" />
+    <!-- Castle Silhouette -->
+    <path
+        android:fillColor="#E2E8F0"
+        android:pathData="M36,74 L36,46 L42,46 L42,51 L48,51 L48,43 L54,43 L60,43 L60,51 L66,51 L66,46 L72,46 L72,74 Z" />
+    <!-- Glowing Core Circle -->
+    <path
+        android:fillColor="#0EA5E9"
+        android:pathData="M54,53 A9,9 0 1,1 53.99,53 Z" />
+    <!-- Plus Symbol inside Core -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M52.5,56.5 L55.5,56.5 L55.5,67.5 L52.5,67.5 Z M48.5,60.5 L59.5,60.5 L59.5,63.5 L48.5,63.5 Z" />
+</vector>
