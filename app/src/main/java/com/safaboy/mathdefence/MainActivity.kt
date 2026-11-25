@@ -46,7 +46,7 @@ class MainActivity : ComponentActivity() {
                     AppScreen.PLAYING -> {
                         GameScreen(
                             state = state,
-                            onAttackerTapped = viewModel::onAttackerTapped,
+                            onTargetTapped = viewModel::onTargetTapped,
                             onTogglePause = viewModel::togglePause,
                             onToggleSound = viewModel::toggleSound,
                             onRestart = viewModel::restartGame,
@@ -60,6 +60,6 @@ class MainActivity : ComponentActivity() {
 
     override fun onPause() {
         super.onPause()
-        viewModel.setPaused(true)
+        viewModel.onAppBackgrounded()
     }
 }

@@ -8,33 +8,38 @@ class MathProblemGenerator(
     private val random: Random = Random.Default
 ) {
 
+    private data class ScaledProblem(
+        val opA: Long,
+        val opB: Long,
+        val answer: Long,
+        val scale: Int,
+        val operation: MathOperation
+    )
+
     fun generate(
         category: MathCategory,
-        wave: Int,
+        skillLevel: Int,
         choiceCount: Int = 4
     ): MathProblem {
-        val safeWave = max(1, wave)
+        val safeLevel = max(1, skillLevel)
+        val safeChoices = choiceCount.coerceAtLeast(2)
         val operation = pickOperation(category)
-        val (a, b, answer) = when (operation) {
-            MathOperation.ADD -> generateAddition(safeWave)
-            MathOperation.SUBTRACT -> generateSubtraction(safeWave)
-            MathOperation.MULTIPLY -> generateMultiplication(safeWave)
-            MathOperation.DIVIDE -> generateDivision(safeWave)
+
+        val scaled = when (operation) {
+            MathOperation.ADD -> generateAddition(safeLevel)
+            MathOperation.SUBTRACT -> generateSubtraction(safeLevel)
+            MathOperation.MULTIPLY -> generateMultiplication(safeLevel)
+            MathOperation.DIVIDE -> generateDivision(safeLevel)
         }
 
-        val choices = generateChoices(
-            a = a,
-            b = b,
-            operation = operation,
-            correctAnswer = answer,
-            choiceCount = choiceCount
-        )
+        val correctStr = formatScaled(scaled.answer, scaled.scale)
+        val choices = generateChoices(scaled, safeChoices)
 
         return MathProblem(
-            operandA = a,
-            operandB = b,
+            displayOperandA = formatScaled(scaled.opA, scaled.scale),
+            displayOperandB = formatScaled(scaled.opB, scaled.scale),
             operation = operation,
-            correctAnswer = answer,
+            correctAnswer = correctStr,
             choices = choices
         )
     }
@@ -47,145 +52,354 @@ class MathProblemGenerator(
         MathCategory.MIXTURE -> MathOperation.entries[random.nextInt(MathOperation.entries.size)]
     }
 
-    private fun generateAddition(wave: Int): Triple<Int, Int, Int> {
-        val (minVal, maxVal) = when {
-            wave <= 3 -> 2 to 15
-            wave <= 8 -> 7 to 35
-            wave <= 14 -> 12 to 65
-            else -> 18 to 95
+    /**
+     * Skill Level progression for Addition:
+     * L1: 2-digit + 1-digit (10..99 + 1..9)
+     * L2: 2-digit + 2-digit (10..99 + 10..99)
+     * L3: 3-digit + 2-digit (100..999 + 10..99)
+     * L4: 4-digit + 2-digit (1000..9999 + 10..99)
+     * L5: 1 d.p. decimals, reduced digits (1.1..9.9 + 0.5..9.9)
+     * L6: 1 d.p. decimals, 2d.1 + 1d.1 (10.1..49.9 + 1.1..9.9)
+     * L7: 1 d.p. decimals, 2d.1 + 2d.1 (10.1..99.9 + 10.1..99.9)
+     * L8: 2 d.p. decimals, reduced digits (1.05..9.95 + 0.15..9.95)
+     * L9+: 2 d.p. decimals, scaling digits
+     */
+    private fun generateAddition(level: Int): ScaledProblem = when (level) {
+        1 -> {
+            val a = random.nextInt(10, 100).toLong()
+            val b = random.nextInt(1, 10).toLong()
+            ScaledProblem(a, b, a + b, scale = 0, MathOperation.ADD)
         }
-        val a = random.nextInt(minVal, maxVal + 1)
-        val b = random.nextInt(minVal, maxVal + 1)
-        return Triple(a, b, a + b)
+        2 -> {
+            val a = random.nextInt(10, 100).toLong()
+            val b = random.nextInt(10, 100).toLong()
+            ScaledProblem(a, b, a + b, scale = 0, MathOperation.ADD)
+        }
+        3 -> {
+            val a = random.nextInt(100, 1000).toLong()
+            val b = random.nextInt(10, 100).toLong()
+            ScaledProblem(a, b, a + b, scale = 0, MathOperation.ADD)
+        }
+        4 -> {
+            val a = random.nextInt(1000, 10000).toLong()
+            val b = random.nextInt(10, 100).toLong()
+            ScaledProblem(a, b, a + b, scale = 0, MathOperation.ADD)
+        }
+        5 -> {
+            val a = nextNonWholeDecimal(11, 99, 10)
+            val b = nextNonWholeDecimal(5, 99, 10)
+            ScaledProblem(a, b, a + b, scale = 1, MathOperation.ADD)
+        }
+        6 -> {
+            val a = nextNonWholeDecimal(101, 499, 10)
+            val b = nextNonWholeDecimal(11, 99, 10)
+            ScaledProblem(a, b, a + b, scale = 1, MathOperation.ADD)
+        }
+        7 -> {
+            val a = nextNonWholeDecimal(101, 999, 10)
+            val b = nextNonWholeDecimal(101, 999, 10)
+            ScaledProblem(a, b, a + b, scale = 1, MathOperation.ADD)
+        }
+        8 -> {
+            val a = nextNonWholeDecimal(105, 995, 100)
+            val b = nextNonWholeDecimal(15, 995, 100)
+            ScaledProblem(a, b, a + b, scale = 2, MathOperation.ADD)
+        }
+        else -> {
+            val cap = (level * 12).coerceAtMost(250) * 100
+            val a = nextNonWholeDecimal(1005, cap, 100)
+            val b = nextNonWholeDecimal(105, 2995, 100)
+            ScaledProblem(a, b, a + b, scale = 2, MathOperation.ADD)
+        }
     }
 
-    private fun generateSubtraction(wave: Int): Triple<Int, Int, Int> {
-        val (minA, maxA) = when {
-            wave <= 3 -> 6 to 22
-            wave <= 8 -> 16 to 55
-            wave <= 14 -> 25 to 85
-            else -> 35 to 120
+    /**
+     * Skill Level progression for Subtraction (always non-negative a >= b):
+     * L1: 2-digit - 1-digit (10..99 - 1..9)
+     * L2: 2-digit - 2-digit (20..99 - 10..a)
+     * L3: 3-digit - 2-digit (100..999 - 10..99)
+     * L4: 4-digit - 2-digit (1000..9999 - 10..99)
+     * L5: 1 d.p. decimals, reduced digits (2.1..9.9 - 0.5..a)
+     * L6: 1 d.p. decimals, 2d.1 - 1d.1 (10.1..49.9 - 1.1..9.9)
+     * L7: 1 d.p. decimals, 2d.1 - 2d.1 (20.1..99.9 - 10.1..a)
+     * L8: 2 d.p. decimals, reduced digits (2.05..9.95 - 0.15..a)
+     * L9+: 2 d.p. decimals, scaling digits
+     */
+    private fun generateSubtraction(level: Int): ScaledProblem = when (level) {
+        1 -> {
+            val a = random.nextInt(10, 100).toLong()
+            val b = random.nextInt(1, 10).toLong()
+            ScaledProblem(a, b, a - b, scale = 0, MathOperation.SUBTRACT)
         }
-        val a = random.nextInt(minA, maxA + 1)
-        val minB = if (wave <= 3) 1 else 4
-        val b = random.nextInt(minB, max(minB + 1, a))
-        return Triple(a, b, a - b)
+        2 -> {
+            val a = random.nextInt(20, 100).toLong()
+            val b = random.nextInt(10, a.toInt() + 1).toLong()
+            ScaledProblem(a, b, a - b, scale = 0, MathOperation.SUBTRACT)
+        }
+        3 -> {
+            val a = random.nextInt(100, 1000).toLong()
+            val b = random.nextInt(10, 100).toLong()
+            ScaledProblem(a, b, a - b, scale = 0, MathOperation.SUBTRACT)
+        }
+        4 -> {
+            val a = random.nextInt(1000, 10000).toLong()
+            val b = random.nextInt(10, 100).toLong()
+            ScaledProblem(a, b, a - b, scale = 0, MathOperation.SUBTRACT)
+        }
+        5 -> {
+            val a = nextNonWholeDecimal(21, 99, 10)
+            val b = nextNonWholeDecimal(5, (a - 1).toInt().coerceAtLeast(6), 10)
+            ScaledProblem(a, b, a - b, scale = 1, MathOperation.SUBTRACT)
+        }
+        6 -> {
+            val a = nextNonWholeDecimal(101, 499, 10)
+            val b = nextNonWholeDecimal(11, 99, 10)
+            ScaledProblem(a, b, a - b, scale = 1, MathOperation.SUBTRACT)
+        }
+        7 -> {
+            val a = nextNonWholeDecimal(201, 999, 10)
+            val b = nextNonWholeDecimal(101, (a - 1).toInt().coerceAtLeast(102), 10)
+            ScaledProblem(a, b, a - b, scale = 1, MathOperation.SUBTRACT)
+        }
+        8 -> {
+            val a = nextNonWholeDecimal(205, 995, 100)
+            val b = nextNonWholeDecimal(15, (a - 1).toInt().coerceAtLeast(16), 100)
+            ScaledProblem(a, b, a - b, scale = 2, MathOperation.SUBTRACT)
+        }
+        else -> {
+            val cap = (level * 12).coerceAtMost(250) * 100
+            val a = nextNonWholeDecimal(1505, cap, 100)
+            val b = nextNonWholeDecimal(105, minOf(2995, (a - 1).toInt()), 100)
+            ScaledProblem(a, b, a - b, scale = 2, MathOperation.SUBTRACT)
+        }
     }
 
-    private fun generateMultiplication(wave: Int): Triple<Int, Int, Int> {
-        val (minF, maxF) = when {
-            wave <= 3 -> 2 to 9
-            wave <= 8 -> 3 to 12
-            wave <= 14 -> 4 to 13
-            else -> 5 to 15
+    /**
+     * Skill Level progression for Multiplication tables:
+     * L1: 1-5x tables
+     * L2: adds 6 and 7 (1-7x)
+     * L3: adds 8, 9, 10 (1-10x)
+     * L4: adds 11 and 12 (1-12x)
+     * L5: adds 13 (1-13x)
+     * L6+: adds 14, 15, ... (12 + (level - 4))
+     */
+    private fun generateMultiplication(level: Int): ScaledProblem {
+        val table = pickTableNumber(level)
+        val maxMultiplier = when {
+            level <= 3 -> 10
+            level == 4 -> 12
+            else -> 12
         }
-        val a = random.nextInt(minF, maxF + 1)
-        val b = random.nextInt(2, maxF + 1)
-        return Triple(a, b, a * b)
+        val multiplier = random.nextInt(1, maxMultiplier + 1)
+        val (a, b) = if (random.nextBoolean()) {
+            table.toLong() to multiplier.toLong()
+        } else {
+            multiplier.toLong() to table.toLong()
+        }
+        return ScaledProblem(a, b, a * b, scale = 0, MathOperation.MULTIPLY)
     }
 
-    private fun generateDivision(wave: Int): Triple<Int, Int, Int> {
-        val (maxDivisor, maxQuotient) = when {
-            wave <= 3 -> 9 to 9
-            wave <= 8 -> 12 to 12
-            wave <= 14 -> 12 to 15
-            else -> 15 to 15
+    /**
+     * Skill Level progression for Division (exact integer quotients matching the same times tables):
+     * L1: 1-5 tables
+     * L2: adds 6 and 7
+     * L3: adds 8, 9, 10
+     * L4: adds 11 and 12
+     * L5+: adds 13, 14, ...
+     */
+    private fun generateDivision(level: Int): ScaledProblem {
+        val divisor = pickTableNumber(level)
+        val maxQuotient = if (level <= 3) 10 else 12
+        val quotient = random.nextInt(1, maxQuotient + 1)
+        val dividend = (divisor * quotient).toLong()
+        return ScaledProblem(dividend, divisor.toLong(), quotient.toLong(), scale = 0, MathOperation.DIVIDE)
+    }
+
+    private fun pickTableNumber(level: Int): Int {
+        val allTables = allowedTablesForLevel(level)
+        val newlyUnlocked = newlyUnlockedTablesForLevel(level)
+        // Bias slightly toward newly unlocked tables so each Skill Level jump feels distinct
+        return if (newlyUnlocked.isNotEmpty() && level > 1 && random.nextFloat() < 0.60f) {
+            newlyUnlocked[random.nextInt(newlyUnlocked.size)]
+        } else {
+            allTables[random.nextInt(allTables.size)]
         }
-        val divisor = random.nextInt(2, maxDivisor + 1)
-        val quotient = random.nextInt(2, maxQuotient + 1)
-        val dividend = divisor * quotient
-        return Triple(dividend, divisor, quotient)
+    }
+
+    private fun nextNonWholeDecimal(minScaled: Int, maxScaled: Int, factor: Int): Long {
+        if (maxScaled <= minScaled) return minScaled.toLong()
+        repeat(8) {
+            val candidate = random.nextInt(minScaled, maxScaled + 1)
+            if (candidate % factor != 0) return candidate.toLong()
+        }
+        val fallback = random.nextInt(minScaled, maxScaled + 1)
+        return if (fallback % factor == 0 && fallback + 1 <= maxScaled) {
+            (fallback + 1).toLong()
+        } else {
+            fallback.toLong()
+        }
     }
 
     private fun generateChoices(
-        a: Int,
-        b: Int,
-        operation: MathOperation,
-        correctAnswer: Int,
+        problem: ScaledProblem,
         choiceCount: Int
-    ): List<Int> {
-        val candidates = linkedSetOf(correctAnswer)
-        val plausible = mutableListOf<Int>()
+    ): List<String> {
+        val correctStr = formatScaled(problem.answer, problem.scale)
+        val candidates = linkedSetOf(correctStr)
+        val unitStep = when (problem.scale) {
+            0 -> 1L
+            1 -> 1L // 0.1
+            else -> 5L // 0.05
+        }
+        val majorStep = when (problem.scale) {
+            0 -> 10L
+            1 -> 10L // 1.0
+            else -> 100L // 1.00
+        }
 
-        when (operation) {
-            MathOperation.ADD -> {
+        val plausible = mutableListOf<Long>()
+        when (problem.operation) {
+            MathOperation.ADD, MathOperation.SUBTRACT -> {
                 plausible += listOf(
-                    correctAnswer + 1,
-                    correctAnswer - 1,
-                    correctAnswer + 2,
-                    correctAnswer - 2,
-                    correctAnswer + 10,
-                    correctAnswer - 10,
-                    correctAnswer + 3,
-                    correctAnswer - 3
+                    problem.answer + unitStep,
+                    problem.answer - unitStep,
+                    problem.answer + unitStep * 2,
+                    problem.answer - unitStep * 2,
+                    problem.answer + majorStep,
+                    problem.answer - majorStep,
+                    problem.answer + unitStep * 3,
+                    problem.answer - unitStep * 3,
+                    problem.answer + majorStep * 2,
+                    problem.answer - majorStep * 2
                 )
-            }
-            MathOperation.SUBTRACT -> {
-                plausible += listOf(
-                    correctAnswer + 1,
-                    correctAnswer - 1,
-                    correctAnswer + 2,
-                    correctAnswer - 2,
-                    correctAnswer + 10,
-                    correctAnswer - 10,
-                    correctAnswer + 4,
-                    correctAnswer - 4
-                )
+                if (problem.scale == 0 && problem.answer >= 100) {
+                    plausible += listOf(problem.answer + 100, problem.answer - 100)
+                }
             }
             MathOperation.MULTIPLY -> {
                 plausible += listOf(
-                    a * (b + 1),
-                    a * (b - 1),
-                    (a + 1) * b,
-                    (a - 1) * b,
-                    correctAnswer + 2,
-                    correctAnswer - 2,
-                    correctAnswer + 10,
-                    correctAnswer - 10,
-                    a + b
+                    problem.opA * (problem.opB + 1),
+                    problem.opA * (problem.opB - 1),
+                    (problem.opA + 1) * problem.opB,
+                    (problem.opA - 1) * problem.opB,
+                    problem.answer + 2,
+                    problem.answer - 2,
+                    problem.answer + 10,
+                    problem.answer - 10,
+                    problem.opA + problem.opB,
+                    problem.answer + 3,
+                    problem.answer - 3
                 )
             }
             MathOperation.DIVIDE -> {
                 plausible += listOf(
-                    correctAnswer + 1,
-                    correctAnswer - 1,
-                    correctAnswer + 2,
-                    correctAnswer - 2,
-                    correctAnswer + 3,
-                    correctAnswer - 3,
-                    correctAnswer + 4,
-                    correctAnswer + 5
+                    problem.answer + 1,
+                    problem.answer - 1,
+                    problem.answer + 2,
+                    problem.answer - 2,
+                    problem.answer + 3,
+                    problem.answer - 3,
+                    problem.answer + 4,
+                    problem.answer + 5,
+                    problem.answer + 6
                 )
             }
         }
 
         plausible
-            .filter { it >= 0 && it != correctAnswer }
+            .filter { it >= 0L && it != problem.answer }
             .shuffled(random)
             .forEach { value ->
                 if (candidates.size < choiceCount) {
-                    candidates += value
+                    candidates += formatScaled(value, problem.scale)
                 }
             }
 
-        var spread = max(5, abs(correctAnswer) / 3 + 4)
+        var spread = max(6L, abs(problem.answer) / 4L + 4L)
         var guard = 0
-        while (candidates.size < choiceCount && guard < 100) {
-            val delta = random.nextInt(-spread, spread + 1)
-            val fallback = correctAnswer + delta
-            if (fallback >= 0 && fallback != correctAnswer) {
-                candidates += fallback
+        while (candidates.size < choiceCount && guard < 120) {
+            val rawDelta = random.nextLong(-spread, spread + 1)
+            val delta = if (problem.scale == 2) (rawDelta / 5L) * 5L else rawDelta
+            val fallback = problem.answer + delta
+            if (fallback >= 0L && fallback != problem.answer) {
+                candidates += formatScaled(fallback, problem.scale)
             }
             guard++
-            if (guard % 15 == 0) spread += 4
+            if (guard % 20 == 0) spread += max(4L, majorStep)
         }
 
-        var fallbackSeq = 1
+        var seq = 1L
         while (candidates.size < choiceCount) {
-            candidates += (correctAnswer + fallbackSeq)
-            fallbackSeq++
+            candidates += formatScaled(problem.answer + seq * unitStep, problem.scale)
+            seq++
         }
 
         return candidates.toList().shuffled(random)
+    }
+
+    companion object {
+        fun maxTableForLevel(level: Int): Int = when (max(1, level)) {
+            1 -> 5
+            2 -> 7
+            3 -> 10
+            4 -> 12
+            else -> 12 + (level - 4) // L5 -> 13, L6 -> 14, L7 -> 15...
+        }
+
+        fun allowedTablesForLevel(level: Int): List<Int> = (1..maxTableForLevel(level)).toList()
+
+        fun newlyUnlockedTablesForLevel(level: Int): List<Int> = when (max(1, level)) {
+            1 -> (1..5).toList()
+            2 -> listOf(6, 7)
+            3 -> listOf(8, 9, 10)
+            4 -> listOf(11, 12)
+            else -> listOf(maxTableForLevel(level))
+        }
+
+        fun describeSkillLevel(category: MathCategory, skillLevel: Int): String {
+            val lvl = max(1, skillLevel)
+            return when (category) {
+                MathCategory.MULTIPLICATION, MathCategory.DIVISION -> {
+                    "1–${maxTableForLevel(lvl)}× Tables"
+                }
+                MathCategory.ADDITION, MathCategory.SUBTRACTION -> {
+                    when (lvl) {
+                        1 -> "2-Digit ± 1-Digit"
+                        2 -> "2-Digit ± 2-Digit"
+                        3 -> "3-Digit ± 2-Digit"
+                        4 -> "4-Digit ± 2-Digit"
+                        5 -> "Decimals (1 d.p.)"
+                        6 -> "Decimals (2d.1 ± 1d.1)"
+                        7 -> "Decimals (2d.1 ± 2d.1)"
+                        8 -> "Decimals (2 d.p.)"
+                        else -> "Advanced Decimals"
+                    }
+                }
+                MathCategory.MIXTURE -> {
+                    val addDesc = when (lvl) {
+                        1 -> "2d±1d"
+                        2 -> "2d±2d"
+                        3 -> "3d±2d"
+                        4 -> "4d±2d"
+                        5, 6, 7 -> "1dp"
+                        else -> "2dp"
+                    }
+                    "1–${maxTableForLevel(lvl)}× & $addDesc"
+                }
+            }
+        }
+
+        fun formatScaled(value: Long, scale: Int): String {
+            if (scale <= 0) return value.toString()
+            val factor = if (scale == 1) 10L else 100L
+            val negative = value < 0
+            val absVal = abs(value)
+            val whole = absVal / factor
+            val frac = absVal % factor
+            val sign = if (negative) "-" else ""
+            if (frac == 0L) return "$sign$whole"
+            val fracPadded = frac.toString().padStart(scale, '0').trimEnd('0')
+            return "$sign$whole.$fracPadded"
+        }
     }
 }

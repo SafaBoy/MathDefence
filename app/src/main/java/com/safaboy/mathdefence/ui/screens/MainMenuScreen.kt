@@ -206,10 +206,10 @@ fun MainMenuScreen(
                     )
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(
-                        text = "• Solve the equation inside your Shield Core and tap the attacker holding the correct answer.\n" +
-                            "• Pick wrong and that attacker blasts your shields!\n" +
-                            "• Take too long and a random attacker opens fire!\n" +
-                            "• Once shields break, your castle takes direct hull damage. Answer time shrinks as waves climb!",
+                        text = "• Solve the equation inside your Shield Core and tap the attacker holding the right answer.\n" +
+                            "• Pick wrong or run out of time and attackers blast your shields—then your castle hull!\n" +
+                            "• Every 10–20 waves, a multi-component Boss Dreadnought arrives with heavy weapons! Destroy its components to advance to the next Skill Level.\n" +
+                            "• Only 3 pauses allowed per game—no pausing to solve sums!",
                         color = TextMuted,
                         fontSize = 12.sp,
                         lineHeight = 18.sp

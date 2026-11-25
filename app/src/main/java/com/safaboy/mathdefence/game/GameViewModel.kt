@@ -75,23 +75,15 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun togglePause() {
-        _uiState.update { state ->
-            if (state.screen == AppScreen.PLAYING && !state.isGameOver) {
-                state.copy(isPaused = !state.isPaused)
-            } else {
-                state
-            }
-        }
+        val result = engine.requestTogglePause(_uiState.value)
+        _uiState.value = result.state
+        handleEvents(result.events)
     }
 
-    fun setPaused(paused: Boolean) {
-        _uiState.update { state ->
-            if (state.screen == AppScreen.PLAYING && !state.isGameOver) {
-                state.copy(isPaused = paused)
-            } else {
-                state
-            }
-        }
+    fun onAppBackgrounded() {
+        val result = engine.requestPauseIfAvailable(_uiState.value)
+        _uiState.value = result.state
+        handleEvents(result.events)
     }
 
     fun toggleSound() {
@@ -100,9 +92,9 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         _uiState.update { it.copy(soundEnabled = next) }
     }
 
-    fun onAttackerTapped(attackerId: Int) {
+    fun onTargetTapped(targetId: Int) {
         val current = _uiState.value
-        val result = engine.onAttackerSelected(current, attackerId)
+        val result = engine.onAttackerSelected(current, targetId)
         _uiState.value = result.state
 
         if (result.state.score > current.highScore) {
@@ -148,8 +140,12 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             }
             when (event) {
                 GameSoundEvent.SHIELD_HIT -> vibrate(40L, 90)
+                GameSoundEvent.BOSS_LASER -> vibrate(95L, 175)
                 GameSoundEvent.SHIELD_BREAK -> vibrate(120L, 180)
                 GameSoundEvent.CASTLE_HIT -> vibrate(90L, 160)
+                GameSoundEvent.BOSS_COMPONENT_DESTROYED -> vibrate(55L, 130)
+                GameSoundEvent.BOSS_DEFEATED -> vibrate(160L, 200)
+                GameSoundEvent.PAUSE_DENIED -> vibrate(50L, 110)
                 GameSoundEvent.GAME_OVER -> vibrate(220L, 210)
                 else -> Unit
             }

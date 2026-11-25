@@ -23,11 +23,16 @@ class SoundEffects {
                 val samples = when (event) {
                     GameSoundEvent.CORRECT_FIRE -> sweepTone(520.0, 1280.0, 140, 0.35)
                     GameSoundEvent.ENEMY_LASER -> sweepTone(760.0, 220.0, 150, 0.32)
+                    GameSoundEvent.BOSS_LASER -> dualTone(190.0, 92.0, 280, 0.48)
                     GameSoundEvent.SHIELD_HIT -> dualTone(310.0, 195.0, 160, 0.36)
                     GameSoundEvent.SHIELD_BREAK -> sweepTone(480.0, 90.0, 320, 0.45)
                     GameSoundEvent.CASTLE_HIT -> sweepTone(180.0, 65.0, 260, 0.45)
                     GameSoundEvent.SHIELD_RESTORE -> arpeggioTone(doubleArrayOf(523.25, 659.25, 783.99), 210, 0.32)
                     GameSoundEvent.TIMER_TICK -> sweepTone(880.0, 820.0, 55, 0.22)
+                    GameSoundEvent.BOSS_APPEAR -> arpeggioTone(doubleArrayOf(220.0, 196.0, 174.61, 146.83), 460, 0.44)
+                    GameSoundEvent.BOSS_COMPONENT_DESTROYED -> sweepTone(340.0, 75.0, 240, 0.42)
+                    GameSoundEvent.BOSS_DEFEATED -> arpeggioTone(doubleArrayOf(523.25, 659.25, 783.99, 1046.5), 420, 0.42)
+                    GameSoundEvent.PAUSE_DENIED -> dualTone(165.0, 150.0, 140, 0.35)
                     GameSoundEvent.GAME_OVER -> arpeggioTone(doubleArrayOf(392.0, 329.63, 261.63, 196.0), 480, 0.40)
                 }
                 playPcm(samples)

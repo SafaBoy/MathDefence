@@ -50,7 +50,7 @@ fun GameOverOverlay(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.78f)),
+            .background(Color.Black.copy(alpha = 0.80f)),
         contentAlignment = Alignment.Center
     ) {
         Card(
@@ -75,9 +75,9 @@ fun GameOverOverlay(
                     letterSpacing = 1.6.sp
                 )
                 Text(
-                    text = "${state.category.title} Mode",
+                    text = "${state.category.title} • Skill Lv ${state.skillLevel} (${state.skillLevelDescription})",
                     color = TextMuted,
-                    fontSize = 13.sp,
+                    fontSize = 12.sp,
                     modifier = Modifier.padding(top = 2.dp)
                 )
 
@@ -99,7 +99,7 @@ fun GameOverOverlay(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(14.dp))
 
                 Text(
                     text = "${state.score}",
@@ -115,15 +115,15 @@ fun GameOverOverlay(
                     letterSpacing = 1.sp
                 )
 
-                Spacer(modifier = Modifier.height(18.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     StatTile(label = "WAVE", value = "${state.wave}", accent = ShieldCyan, modifier = Modifier.weight(1f))
-                    StatTile(label = "SOLVED", value = "${state.correctCount}", accent = EmeraldSafe, modifier = Modifier.weight(1f))
-                    StatTile(label = "ACCURACY", value = "${state.accuracyPercent}%", accent = AmberWarn, modifier = Modifier.weight(1f))
+                    StatTile(label = "SKILL LV", value = "${state.skillLevel}", accent = Color(0xFFC084FC), modifier = Modifier.weight(1f))
+                    StatTile(label = "BOSSES", value = "${state.bossesDefeated}", accent = AmberWarn, modifier = Modifier.weight(1f))
                 }
 
                 Spacer(modifier = Modifier.height(10.dp))
@@ -132,12 +132,12 @@ fun GameOverOverlay(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
+                    StatTile(label = "SOLVED", value = "${state.correctCount}", accent = EmeraldSafe, modifier = Modifier.weight(1f))
+                    StatTile(label = "ACCURACY", value = "${state.accuracyPercent}%", accent = ShieldCyan, modifier = Modifier.weight(1f))
                     StatTile(label = "BEST STREAK", value = "x${state.bestStreak}", accent = AmberWarn, modifier = Modifier.weight(1f))
-                    StatTile(label = "WRONG", value = "${state.wrongCount}", accent = CrimsonDanger, modifier = Modifier.weight(1f))
-                    StatTile(label = "TIMEOUTS", value = "${state.timeoutCount}", accent = Color(0xFFFB7185), modifier = Modifier.weight(1f))
                 }
 
-                Spacer(modifier = Modifier.height(22.dp))
+                Spacer(modifier = Modifier.height(20.dp))
 
                 Button(
                     onClick = onPlayAgain,
